@@ -1,0 +1,298 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{amsmath}
+\usepackage{hyperref}
+
+\setstretch{1.15}
+
+\title{Traffic Accident Severity Analysis\\CSE 532 Final Project Report (Draft)}
+\author{Diego Chequer, Joshua Carrier}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+    This report presents an analysis of the US Accidents dataset
+    to investigate whether weather conditions and road characteristics
+    influence accident severity.
+\end{abstract}
+
+\section{Problem Statement}
+Traffic accidents are influenced by environmental conditions, roadway context, and time-related factors. The primary research question for this project is:
+
+\begin{quote}
+    Do weather conditions and road characteristics significantly influence accident severity in real-world US traffic accident records?
+\end{quote}
+
+The target variable is \texttt{Severity}, and the analysis focuses on identifying meaningful patterns between severity and:
+\begin{itemize}
+    \item weather features (e.g., visibility, temperature, precipitation, weather condition),
+    \item temporal features (hour of day, day of week, weekend/non-weekend), and
+    \item road attributes (e.g., traffic signal, crossing, junction, stop).
+\end{itemize}
+
+\newpage
+\section{Dataset Description}
+The dataset used is the \textbf{US Accidents} dataset from Kaggle (Sobhan Moosavi et al.). In the current notebook workflow, the first 1,000,000 rows are loaded to keep analysis and visualization manageable while preserving large-scale patterns.
+
+\subsection{Raw Data Snapshot}
+The data includes geographic, temporal, weather, and road context features such as:
+\begin{itemize}
+    \item location: \texttt{Start\_Lat}, \texttt{Start\_Lng}, state, city,
+    \item weather: \texttt{Temperature(F)}, \texttt{Visibility(mi)}, \texttt{Precipitation(in)}, \texttt{Weather\_Condition},
+    \item time: \texttt{Start\_Time}, \texttt{End\_Time},
+    \item road flags: \texttt{Traffic\_Signal}, \texttt{Junction}, \texttt{Crossing}, \texttt{Stop}, etc.
+\end{itemize}
+
+\subsection{Cleaning and Feature Engineering}
+The notebook applies the following preprocessing strategy:
+\begin{itemize}
+    \item fill missing \texttt{End\_Lat}/\texttt{End\_Lng} from start coordinates,
+    \item fill missing \texttt{Precipitation(in)} with 0,
+    \item remove less useful or high-missing columns for this study,
+    \item drop rows with missing values in critical fields,
+    \item convert timestamps and engineer temporal features:\
+          \texttt{Hour}, \texttt{DayOfWeek}, \texttt{IsWeekend}, and \texttt{TimeOfDay}.
+\end{itemize}
+
+\newpage
+\section{Key Findings from Statistic Analysis}
+
+\begin{itemize}
+    \item \textbf{Severity distribution is imbalanced.} Most records are in the 'Severity=2' bucket.
+    \item \textbf{Time-of-day effects are visible.} Accident volume varies by hour, and average severity differs across day parts (night, morning, afternoon, evening).
+    \item \textbf{Weather matters.} Grouped summaries by \texttt{Weather\_Condition} show differences in average severity under different weather categories.
+    \item \textbf{Road context contributes signal.} Presence of intersections, traffic controls, and crossing-related flags is associated with measurable differences in severity averages.
+\end{itemize}
+
+\subsection{Descriptive Statistics}
+Table~\ref{tab:severity_stats} summarizes the overall severity distribution. The mean severity is just above 2, and the range spans 1 to 4.
+
+\begin{table}[H]
+    \centering
+    \caption{Overall severity statistics}
+    \label{tab:severity_stats}
+    \begin{tabular}{lrrrrrr}
+        \toprule
+        Metric   & Mean  & Median & Std. Dev. & Variance & Min   & Max   \\
+        \midrule
+        Severity & 2.211 & 2.000  & 0.486     & 0.236    & 1.000 & 4.000 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Weather variables show high visibility overall and low precipitation for most records (Table~\ref{tab:weather_stats}).
+
+\begin{table}[H]
+    \centering
+    \caption{Weather feature statistics}
+    \label{tab:weather_stats}
+    \begin{tabular}{lrrr}
+        \toprule
+        Metric    & Temperature(F) & Visibility(mi) & Precipitation(in) \\
+        \midrule
+        Mean      & 61.690         & 9.090          & 0.006             \\
+        Median    & 64.000         & 10.000         & 0.000             \\
+        Std. Dev. & 18.998         & 2.681          & 0.084             \\
+        Variance  & 360.908        & 7.187          & 0.007             \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Grouped Severity Summaries}
+Table~\ref{tab:weather_condition} lists the top 15 weather categories by count. Clear and overcast conditions show slightly higher average severity than fair conditions.
+
+\begin{table}[H]
+    \centering
+    \caption{Severity by weather condition (top 15 by count)}
+    \label{tab:weather_condition}
+    \begin{tabular}{lrrrr}
+        \toprule
+        Weather Condition & Count         & Mean  & Median & Std. Dev. \\
+        \midrule
+        Fair              & 2{,}542{,}337 & 2.127 & 2.000  & 0.429     \\
+        Mostly Cloudy     & 1{,}012{,}470 & 2.222 & 2.000  & 0.490     \\
+        Cloudy            & 811{,}686     & 2.160 & 2.000  & 0.458     \\
+        Clear             & 803{,}327     & 2.368 & 2.000  & 0.547     \\
+        Partly Cloudy     & 695{,}466     & 2.218 & 2.000  & 0.485     \\
+        Overcast          & 380{,}235     & 2.385 & 2.000  & 0.556     \\
+        Light Rain        & 351{,}450     & 2.248 & 2.000  & 0.503     \\
+        Scattered Clouds  & 203{,}830     & 2.380 & 2.000  & 0.543     \\
+        Light Snow        & 128{,}247     & 2.246 & 2.000  & 0.510     \\
+        Fog               & 98{,}529      & 2.146 & 2.000  & 0.440     \\
+        Rain              & 83{,}659      & 2.259 & 2.000  & 0.501     \\
+        Haze              & 75{,}594      & 2.212 & 2.000  & 0.448     \\
+        Fair / Windy      & 35{,}370      & 2.144 & 2.000  & 0.447     \\
+        Heavy Rain        & 32{,}027      & 2.265 & 2.000  & 0.503     \\
+        Light Drizzle     & 22{,}564      & 2.269 & 2.000  & 0.526     \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Time-of-day and weekend effects are small but consistent (Table~\ref{tab:time_weekend}). Night and evening periods show slightly higher average severity, and weekend accidents are modestly more severe on average.
+
+\begin{table}[H]
+    \centering
+    \caption{Severity by time of day and weekend flag}
+    \label{tab:time_weekend}
+    \begin{tabular}{lrrrr}
+        \toprule
+        Group           & Count         & Mean  & Median & Std. Dev. \\
+        \midrule
+        Night           & 673{,}934     & 2.233 & 2.000  & 0.539     \\
+        Morning         & 2{,}366{,}294 & 2.216 & 2.000  & 0.485     \\
+        Afternoon       & 2{,}498{,}105 & 2.226 & 2.000  & 0.485     \\
+        Evening         & 1{,}249{,}825 & 2.253 & 2.000  & 0.520     \\
+        Weekend = False & 6{,}478{,}728 & 2.201 & 2.000  & 0.477     \\
+        Weekend = True  & 1{,}029{,}549 & 2.278 & 2.000  & 0.533     \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Road context indicators show differences in severity means (Table~\ref{tab:road_flags}). Junctions tend to show higher average severity relative to traffic signals and crossings.
+
+\begin{table}[H]
+    \centering
+    \caption{Severity by road condition flags}
+    \label{tab:road_flags}
+    \begin{tabular}{lrrr}
+        \toprule
+        Flag            & Count         & Mean Severity & Median Severity \\
+        \midrule
+        Traffic Signal  & 1{,}119{,}199 & 2.089         & 2.000           \\
+        Crossing        & 857{,}008     & 2.064         & 2.000           \\
+        Junction        & 554{,}406     & 2.298         & 2.000           \\
+        Stop            & 208{,}318     & 2.075         & 2.000           \\
+        Station         & 197{,}296     & 2.074         & 2.000           \\
+        Amenity         & 94{,}069      & 2.070         & 2.000           \\
+        Railway         & 64{,}720      & 2.153         & 2.000           \\
+        Give Way        & 35{,}383      & 2.172         & 2.000           \\
+        No Exit         & 19{,}198      & 2.113         & 2.000           \\
+        Traffic Calming & 7{,}394       & 2.125         & 2.000           \\
+        Bump            & 3{,}445       & 2.095         & 2.000           \\
+        Roundabout      & 244           & 2.070         & 2.000           \\
+        Turning Loop    & 0             & ---           & ---             \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+Geographic concentration is strong (Table~\ref{tab:top_states}), with California and Florida leading accident counts.
+
+\begin{table}[H]
+    \centering
+    \caption{Top states by accident count}
+    \label{tab:top_states}
+    \begin{tabular}{lr}
+        \toprule
+        State & Count         \\
+        \midrule
+        CA    & 1{,}687{,}168 \\
+        FL    & 861{,}442     \\
+        TX    & 571{,}447     \\
+        SC    & 373{,}714     \\
+        NY    & 343{,}858     \\
+        NC    & 333{,}821     \\
+        PA    & 289{,}042     \\
+        VA    & 283{,}638     \\
+        MN    & 188{,}018     \\
+        OR    & 175{,}592     \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Figures}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/severity_distribution.png}
+    \caption{Accident severity distribution.}
+    \label{fig:severity_distribution}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/accidents_by_hour.png}
+    \caption{Accident count by hour of day.}
+    \label{fig:accidents_by_hour}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/severity_by_weather.png}
+    \caption{Average severity by top weather conditions.}
+    \label{fig:severity_by_weather}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.85\textwidth]{figures/us_accident_map.png}
+    \caption{US accident geospatial distribution (sampled points).}
+    \label{fig:us_map}
+\end{figure}
+
+\newpage
+\section{Model Results (In Progress)}
+This project currently includes a \textbf{baseline linear regression pipeline} in the notebook:
+\begin{itemize}
+    \item numeric inputs scaled with \texttt{StandardScaler},
+    \item categorical inputs one-hot encoded,
+    \item boolean road/time flags passed through,
+    \item train/test split with 80/20 partition.
+\end{itemize}
+
+Evaluation metrics planned and partially implemented include \(R^2\) and RMSE. Final model development is still ongoing.
+
+\subsection{Current Baseline Placeholder}
+Replace the placeholders in Table~\ref{tab:baseline_results} with actual notebook outputs after rerunning the model section.
+
+\begin{table}[H]
+    \centering
+    \caption{Baseline model performance (to be updated)}
+    \label{tab:baseline_results}
+    \begin{tabular}{lcc}
+        \toprule
+        Model                        & $R^2$        & RMSE         \\
+        \midrule
+        Linear Regression (baseline) & \texttt{TBD} & \texttt{TBD} \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsection{Planned Model Expansion}
+The next stage will compare multiple machine learning models, for example:
+\begin{itemize}
+    \item Random Forest Regressor,
+    \item Gradient Boosting / XGBoost,
+    \item Regularized linear models (Ridge/Lasso).
+\end{itemize}
+
+For each model, we will report:
+\begin{itemize}
+    \item train/test performance (\(R^2\), RMSE, and MAE),
+    \item feature importance or coefficient interpretation,
+    \item error analysis across severity levels.
+\end{itemize}
+
+\section{Conclusion}
+This in-progress report establishes a strong foundation for the final project. Initial exploratory analysis supports the hypothesis that weather, time, and road characteristics are related to accident severity. While the full machine learning comparison is still in progress, the current pipeline and EDA results already demonstrate meaningful structure in the data.
+
+The final version of this report will add:
+\begin{itemize}
+    \item completed model benchmark results,
+    \item final figures and metrics tables,
+    \item a concise discussion of limitations and practical implications.
+\end{itemize}
+
+\section*{Reproducibility Note}
+All analysis and figures are generated from the project notebook \texttt{notebooks/traffic\_analysis.ipynb}. Exported figures should be placed under \texttt{figures/} using the filenames referenced in this report.
+
+\end{document}
+
